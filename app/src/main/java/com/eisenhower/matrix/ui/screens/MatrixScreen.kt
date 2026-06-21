@@ -18,10 +18,6 @@ import com.eisenhower.matrix.ui.components.*
 import com.eisenhower.matrix.ui.theme.DividerColor
 import com.eisenhower.matrix.utils.ThemePreference
 
-/**
- * Главный экран — матрица Эйзенхауэра 2×2.
- * Собирает состояние из ViewModel и отображает все 4 квадранта.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MatrixScreen(
@@ -29,7 +25,6 @@ fun MatrixScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // DragDropContainer — корневой контейнер для drag & drop
     DragDropContainer(modifier = Modifier.fillMaxSize()) {
 
         Scaffold(
@@ -46,30 +41,22 @@ fun MatrixScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                // Сетка матрицы 2x2
                 MatrixGrid(
                     uiState = uiState,
                     onAddTask = viewModel::showAddDialog,
                     onDragStart = viewModel::onDragStart,
-                    onDragCancel = viewModel::onDragCancel,
                     onDrop = viewModel::onDrop,
                     onHover = viewModel::onDragHover,
                     onDeleteRequest = viewModel::requestDelete,
                     onEditRequest = viewModel::showEditDialog
                 )
 
-                // Туториал при первом запуске
-                AnimatedVisibility(
-                    visible = uiState.showTutorial,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
+                if (uiState.showTutorial) {
                     TutorialOverlay(onDismiss = viewModel::dismissTutorial)
                 }
             }
         }
 
-        // Диалог добавления задачи
         if (uiState.showAddDialog && uiState.addToQuadrant != null) {
             AddTaskDialog(
                 quadrant = uiState.addToQuadrant!!,
@@ -80,7 +67,6 @@ fun MatrixScreen(
             )
         }
 
-        // Диалог редактирования задачи
         uiState.taskToEdit?.let { task ->
             EditTaskDialog(
                 task = task,
@@ -89,7 +75,6 @@ fun MatrixScreen(
             )
         }
 
-        // Диалог подтверждения удаления
         uiState.taskToDelete?.let { task ->
             DeleteConfirmDialog(
                 task = task,
@@ -100,22 +85,16 @@ fun MatrixScreen(
     }
 }
 
-/**
- * Сетка матрицы — 4 квадранта в компоновке 2×2.
- * Разделители между квадрантами — центральный крест.
- */
 @Composable
 private fun MatrixGrid(
     uiState: MatrixUiState,
     onAddTask: (Quadrant) -> Unit,
     onDragStart: (com.eisenhower.matrix.data.model.Task) -> Unit,
-    onDragCancel: () -> Unit,
     onDrop: (Quadrant) -> Unit,
     onHover: (Quadrant?) -> Unit,
     onDeleteRequest: (com.eisenhower.matrix.data.model.Task) -> Unit,
     onEditRequest: (com.eisenhower.matrix.data.model.Task) -> Unit
 ) {
-    // Толщина разделителя между квадрантами
     val dividerThickness = 3.dp
     val dividerColor = DividerColor
 
@@ -124,7 +103,7 @@ private fun MatrixGrid(
             .fillMaxSize()
             .padding(8.dp)
     ) {
-        // Метки осей (СРОЧНО / НЕ СРОЧНО)
+        // Метки оси X
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -137,13 +116,11 @@ private fun MatrixGrid(
         }
 
         Row(modifier = Modifier.fillMaxSize()) {
-            // Метка оси Y (ВАЖНО / НЕ ВАЖНО) — вертикально
+            // Метка оси Y
             VerticalAxisLabel()
 
-            // Квадранты
             Column(modifier = Modifier.weight(1f)) {
-
-                // Верхняя строка: Q1 и Q2
+                // Верхняя строка
                 Row(modifier = Modifier.weight(1f)) {
                     QuadrantCell(
                         quadrant = Quadrant.DO_FIRST,
@@ -175,7 +152,6 @@ private fun MatrixGrid(
                     )
                 }
 
-                // Горизонтальный разделитель
                 Spacer(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -183,7 +159,7 @@ private fun MatrixGrid(
                         .background(dividerColor)
                 )
 
-                // Нижняя строка: Q3 и Q4
+                // Нижняя строка
                 Row(modifier = Modifier.weight(1f)) {
                     QuadrantCell(
                         quadrant = Quadrant.DELEGATE,
@@ -219,9 +195,6 @@ private fun MatrixGrid(
     }
 }
 
-/**
- * Одна ячейка сетки — оборачивает QuadrantPanel.
- */
 @Composable
 private fun QuadrantCell(
     quadrant: Quadrant,
@@ -251,9 +224,6 @@ private fun QuadrantCell(
     )
 }
 
-/**
- * Метка оси X (срочность).
- */
 @Composable
 private fun AxisLabel(text: String, modifier: Modifier = Modifier) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
@@ -265,9 +235,6 @@ private fun AxisLabel(text: String, modifier: Modifier = Modifier) {
     }
 }
 
-/**
- * Вертикальная метка оси Y (важность).
- */
 @Composable
 private fun VerticalAxisLabel() {
     Column(
@@ -277,39 +244,16 @@ private fun VerticalAxisLabel() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        // Rotate-текст через Box с rotate modifier
-        androidx.compose.ui.graphics.graphicsLayer { }
-        Text(
-            text = "В",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = "А",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = "Ж",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = "Н",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = "О",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        listOf("В", "А", "Ж", "Н", "О").forEach { letter ->
+            Text(
+                text = letter,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
-/**
- * TopBar с переключателем темы.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MatrixTopBar(
@@ -331,7 +275,6 @@ private fun MatrixTopBar(
             }
         },
         actions = {
-            // Переключатель темы (три состояния)
             IconButton(
                 onClick = {
                     onThemeChange(

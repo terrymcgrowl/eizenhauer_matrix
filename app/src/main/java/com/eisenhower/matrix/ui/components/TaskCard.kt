@@ -1,6 +1,6 @@
 package com.eisenhower.matrix.ui.components
 
-import androidx.compose.animation.*
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -16,28 +16,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.eisenhower.matrix.data.model.Task
 import com.eisenhower.matrix.ui.theme.colors
 
-/**
- * Карточка задачи с поддержкой:
- * - Свайпа влево/вправо для удаления
- * - Долгого нажатия для редактирования
- * - Визуальной обратной связи при перетаскивании
- *
- * @param task Отображаемая задача
- * @param isDragging Перетаскивается ли сейчас эта карточка
- * @param onLongPress Колбэк долгого нажатия → открыть редактор
- * @param onSwipeToDelete Колбэк запроса удаления
- * @param dragHandleModifier Modifier для области захвата (передаётся из drag & drop системы)
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskCard(
@@ -50,29 +36,25 @@ fun TaskCard(
     val haptic = LocalHapticFeedback.current
     val quadrantColors = task.quadrant.colors()
 
-    // Состояние свайпа (Material3 SwipeToDismiss)
     val swipeState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.StartToEnd ||
                 value == SwipeToDismissBoxValue.EndToStart
             ) {
-                // Вибрация при подтверждении свайпа
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onSwipeToDelete()
-                false // false = не удаляем сами, ждём подтверждения
+                false
             } else false
         },
         positionalThreshold = { totalDistance -> totalDistance * 0.4f }
     )
 
-    // Анимация тени при перетаскивании
     val elevation by animateDpAsState(
         targetValue = if (isDragging) 12.dp else 2.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "elevation"
     )
 
-    // Масштаб при перетаскивании — карточка чуть увеличивается
     val scale by animateFloatAsState(
         targetValue = if (isDragging) 1.05f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
@@ -83,7 +65,6 @@ fun TaskCard(
         state = swipeState,
         modifier = Modifier.fillMaxWidth(),
         backgroundContent = {
-            // Красный фон при свайпе
             val color by animateColorAsState(
                 targetValue = when (swipeState.dismissDirection) {
                     SwipeToDismissBoxValue.StartToEnd,
@@ -93,6 +74,10 @@ fun TaskCard(
                 label = "swipe_bg"
             )
             val isActive = swipeState.dismissDirection != SwipeToDismissBoxValue.Settled
+            val contentAlignment = when (swipeState.dismissDirection) {
+                SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                else -> Alignment.CenterEnd
+            }
 
             Box(
                 modifier = Modifier
@@ -100,12 +85,9 @@ fun TaskCard(
                     .clip(RoundedCornerShape(12.dp))
                     .background(color)
                     .padding(horizontal = 20.dp),
-                contentAlignment = when (swipeState.dismissDirection) {
-                    SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
-                    else -> Alignment.CenterEnd
-                }
+                contentAlignment = contentAlignment
             ) {
-                AnimatedVisibility(visible = isActive) {
+                if (isActive) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Удалить",
@@ -116,7 +98,6 @@ fun TaskCard(
             }
         }
     ) {
-        // Сама карточка задачи
         Card(
             modifier = dragHandleModifier
                 .fillMaxWidth()
@@ -144,9 +125,9 @@ fun TaskCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterStart
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Цветная полоска слева — индикатор квадранта
+                // Цветная полоска — индикатор квадранта
                 Box(
                     modifier = Modifier
                         .width(4.dp)
