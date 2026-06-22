@@ -23,6 +23,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.eisenhower.matrix.data.model.Task
 import com.eisenhower.matrix.ui.theme.colors
+import java.text.SimpleDateFormat
+import java.util.*
+
+// Форматтер для отображения срока
+private val dueDateFormatter = SimpleDateFormat("d MMM", Locale("ru"))
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,29 +39,21 @@ fun TaskCard(
     dragHandleModifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
-    val quadrantColors = task.quadrant.colors()
+    val accent = task.quadrant.colors().accent
 
     val swipeState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.StartToEnd ||
-                value == SwipeToDismissBoxValue.EndToStart
-            ) {
+            if (value != SwipeToDismissBoxValue.Settled) {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onSwipeToDelete()
                 false
             } else false
         },
-        positionalThreshold = { totalDistance -> totalDistance * 0.4f }
-    )
-
-    val elevation by animateDpAsState(
-        targetValue = if (isDragging) 12.dp else 2.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "elevation"
+        positionalThreshold = { it * 0.45f }
     )
 
     val scale by animateFloatAsState(
-        targetValue = if (isDragging) 1.05f else 1f,
+        targetValue = if (isDragging) 1.04f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "scale"
     )
@@ -65,79 +62,54 @@ fun TaskCard(
         state = swipeState,
         modifier = Modifier.fillMaxWidth(),
         backgroundContent = {
-            val color by animateColorAsState(
-                targetValue = when (swipeState.dismissDirection) {
-                    SwipeToDismissBoxValue.StartToEnd,
-                    SwipeToDismissBoxValue.EndToStart -> Color(0xFFE53935)
-                    else -> Color.Transparent
-                },
+            val active = swipeState.dismissDirection != SwipeToDismissBoxValue.Settled
+            val bgColor by animateColorAsState(
+                targetValue = if (active) Color(0xFFD94F4F) else Color.Transparent,
                 label = "swipe_bg"
             )
-            val isActive = swipeState.dismissDirection != SwipeToDismissBoxValue.Settled
-            val contentAlignment = when (swipeState.dismissDirection) {
-                SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
-                else -> Alignment.CenterEnd
-            }
-
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(color)
-                    .padding(horizontal = 20.dp),
-                contentAlignment = contentAlignment
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(bgColor)
+                    .padding(horizontal = 16.dp),
+                contentAlignment = if (swipeState.dismissDirection == SwipeToDismissBoxValue.StartToEnd)
+                    Alignment.CenterStart else Alignment.CenterEnd
             ) {
-                if (isActive) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Удалить",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
+                if (active) {
+                    Icon(Icons.Default.Delete, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                 }
             }
         }
     ) {
-        Card(
+        Surface(
             modifier = dragHandleModifier
                 .fillMaxWidth()
                 .scale(scale)
-                .shadow(elevation = elevation, shape = RoundedCornerShape(12.dp))
-                .pointerInput(task) {
-                    detectTapGestures(
-                        onLongPress = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onLongPress()
-                        }
-                    )
+                .shadow(if (isDragging) 8.dp else 0.dp, RoundedCornerShape(8.dp))
+                .pointerInput(task.id) {
+                    detectTapGestures(onLongPress = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onLongPress()
+                    })
                 },
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (isDragging) {
-                    quadrantColors.background.copy(alpha = 0.9f)
-                } else {
-                    MaterialTheme.colorScheme.surface
-                }
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Цветная полоска — индикатор квадранта
+                // Тонкая цветная полоска — единственный цветовой акцент
                 Box(
                     modifier = Modifier
-                        .width(4.dp)
-                        .height(40.dp)
+                        .width(3.dp)
+                        .height(32.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(quadrantColors.accent)
+                        .background(accent)
                 )
-
-                Spacer(Modifier.width(10.dp))
-
+                Spacer(Modifier.width(9.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = task.title,
@@ -146,15 +118,35 @@ fun TaskCard(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    if (task.description.isNotBlank()) {
+                    // Описание и срок — только если есть
+                    val hasDescription = task.description.isNotBlank()
+                    val hasDueDate = task.dueDate != null
+                    if (hasDescription || hasDueDate) {
                         Spacer(Modifier.height(2.dp))
-                        Text(
-                            text = task.description,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (hasDescription) {
+                                Text(
+                                    text = task.description,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                            }
+                            if (hasDueDate) {
+                                val isOverdue = task.dueDate!! < System.currentTimeMillis()
+                                Text(
+                                    text = dueDateFormatter.format(Date(task.dueDate)),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isOverdue) Color(0xFFD94F4F)
+                                            else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }

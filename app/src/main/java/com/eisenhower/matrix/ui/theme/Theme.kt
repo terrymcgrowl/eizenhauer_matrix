@@ -10,69 +10,43 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.eisenhower.matrix.utils.ThemePreference
 
-/**
- * Типографика приложения.
- * Используем системный шрифт для лучшей читаемости на разных устройствах.
- */
 val AppTypography = Typography(
-    // Заголовок приложения
-    headlineLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Bold,
-        fontSize = 28.sp,
-        lineHeight = 36.sp,
-        letterSpacing = (-0.5).sp
-    ),
-    // Заголовки квадрантов
-    headlineSmall = TextStyle(
+    titleMedium = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
-        lineHeight = 22.sp,
+        fontSize = 13.sp,
         letterSpacing = 0.sp
     ),
-    // Название задачи
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
-        fontSize = 15.sp,
-        lineHeight = 22.sp,
-        letterSpacing = 0.sp
+        fontSize = 14.sp,
+        lineHeight = 20.sp
     ),
-    // Подпись задачи
     bodyMedium = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
-        fontSize = 13.sp,
-        lineHeight = 18.sp,
-        letterSpacing = 0.1.sp
+        fontSize = 12.sp,
+        lineHeight = 16.sp
     ),
-    // Подзаголовок квадранта (напр. "Срочно и важно")
     labelSmall = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.Normal,
         fontSize = 11.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.5.sp
+        letterSpacing = 0.sp
     )
 )
 
-/**
- * Корневая тема приложения.
- * @param themePreference Выбор пользователя: светлая / тёмная / системная
- */
 @Composable
 fun EisenhowerTheme(
     themePreference: ThemePreference = ThemePreference.SYSTEM,
     content: @Composable () -> Unit
 ) {
-    // Определяем, нужна ли тёмная тема
     val isDark = when (themePreference) {
         ThemePreference.DARK -> true
         ThemePreference.LIGHT -> false
         ThemePreference.SYSTEM -> isSystemInDarkTheme()
     }
-
     MaterialTheme(
         colorScheme = if (isDark) DarkColorScheme else LightColorScheme,
         typography = AppTypography,

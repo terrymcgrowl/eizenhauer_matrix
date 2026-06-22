@@ -12,38 +12,19 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * Состояние UI главного экрана матрицы.
- */
 data class MatrixUiState(
-    // Задачи по квадрантам (загружены из БД)
     val tasksByQuadrant: Map<Quadrant, List<Task>> = emptyMap(),
-    // Идёт ли перетаскивание в данный момент
     val isDragging: Boolean = false,
-    // Задача, которую сейчас тащат
     val draggingTask: Task? = null,
-    // Квадрант, над которым находится задача при перетаскивании
     val hoveredQuadrant: Quadrant? = null,
-    // Показывать ли туториал
     val showTutorial: Boolean = false,
-    // Текущая тема
     val themePreference: ThemePreference = ThemePreference.SYSTEM,
-    // Задача для удаления (ожидает подтверждения)
     val taskToDelete: Task? = null,
-    // Задача для редактирования
     val taskToEdit: Task? = null,
-    // Показывать ли диалог добавления задачи
     val showAddDialog: Boolean = false,
-    // Квадрант для новой задачи
     val addToQuadrant: Quadrant? = null
 )
 
-/**
- * ViewModel главного экрана.
- * Собирает данные из всех 4 квадрантов и предоставляет действия пользователя.
- *
- * @HiltViewModel — Hilt управляет созданием ViewModel.
- */
 @HiltViewModel
 class MatrixViewModel @Inject constructor(
     private val repository: TaskRepository,
@@ -54,27 +35,17 @@ class MatrixViewModel @Inject constructor(
     val uiState: StateFlow<MatrixUiState> = _uiState.asStateFlow()
 
     init {
-        // Загружаем задачи для каждого квадранта в один Map
         viewModelScope.launch {
-            // Объединяем 4 потока из БД в единое состояние UI
             combine(
                 repository.getTasksByQuadrant(Quadrant.DO_FIRST),
                 repository.getTasksByQuadrant(Quadrant.SCHEDULE),
                 repository.getTasksByQuadrant(Quadrant.DELEGATE),
                 repository.getTasksByQuadrant(Quadrant.ELIMINATE)
-            ) { doFirst, schedule, delegate, eliminate ->
-                mapOf(
-                    Quadrant.DO_FIRST to doFirst,
-                    Quadrant.SCHEDULE to schedule,
-                    Quadrant.DELEGATE to delegate,
-                    Quadrant.ELIMINATE to eliminate
-                )
-            }.collect { taskMap ->
-                _uiState.update { it.copy(tasksByQuadrant = taskMap) }
-            }
+            ) { q1, q2, q3, q4 ->
+                mapOf(Quadrant.DO_FIRST to q1, Quadrant.SCHEDULE to q2,
+                      Quadrant.DELEGATE to q3, Quadrant.ELIMINATE to q4)
+            }.collect { map -> _uiState.update { it.copy(tasksByQuadrant = map) } }
         }
-
-        // Следим за настройками (туториал, тема)
         viewModelScope.launch {
             preferencesManager.isTutorialShown.collect { shown ->
                 _uiState.update { it.copy(showTutorial = !shown) }
@@ -87,120 +58,49 @@ class MatrixViewModel @Inject constructor(
         }
     }
 
-    // ========================
     // Drag & Drop
-    // ========================
-
-    /**
-     * Начало перетаскивания задачи.
-     */
-    fun onDragStart(task: Task) {
-        _uiState.update {
-            it.copy(isDragging = true, draggingTask = task)
-        }
-    }
-
-    /**
-     * Обновление: курсор над квадрантом.
-     */
-    fun onDragHover(quadrant: Quadrant?) {
-        _uiState.update { it.copy(hoveredQuadrant = quadrant) }
-    }
-
-    /**
-     * Завершение перетаскивания: перемещаем задачу в новый квадрант.
-     */
+    fun onDragStart(task: Task) = _uiState.update { it.copy(isDragging = true, draggingTask = task) }
+    fun onDragHover(quadrant: Quadrant?) = _uiState.update { it.copy(hoveredQuadrant = quadrant) }
     fun onDrop(targetQuadrant: Quadrant) {
         val task = _uiState.value.draggingTask ?: return
         if (task.quadrant != targetQuadrant) {
-            viewModelScope.launch {
-                repository.moveTaskToQuadrant(task, targetQuadrant)
-            }
+            viewModelScope.launch { repository.moveTaskToQuadrant(task, targetQuadrant) }
         }
-        _uiState.update {
-            it.copy(isDragging = false, draggingTask = null, hoveredQuadrant = null)
-        }
+        _uiState.update { it.copy(isDragging = false, draggingTask = null, hoveredQuadrant = null) }
     }
+    fun onDragCancel() = _uiState.update { it.copy(isDragging = false, draggingTask = null, hoveredQuadrant = null) }
 
-    /**
-     * Отмена перетаскивания (палец убран за пределы экрана).
-     */
-    fun onDragCancel() {
-        _uiState.update {
-            it.copy(isDragging = false, draggingTask = null, hoveredQuadrant = null)
-        }
-    }
-
-    // ========================
-    // Добавление задачи
-    // ========================
-
-    fun showAddDialog(quadrant: Quadrant) {
-        _uiState.update { it.copy(showAddDialog = true, addToQuadrant = quadrant) }
-    }
-
-    fun dismissAddDialog() {
-        _uiState.update { it.copy(showAddDialog = false, addToQuadrant = null) }
-    }
-
-    fun addTask(title: String, description: String, quadrant: Quadrant) {
+    // Добавление
+    fun showAddDialog(quadrant: Quadrant) = _uiState.update { it.copy(showAddDialog = true, addToQuadrant = quadrant) }
+    fun dismissAddDialog() = _uiState.update { it.copy(showAddDialog = false, addToQuadrant = null) }
+    fun addTask(title: String, description: String, quadrant: Quadrant, dueDate: Long?) {
         if (title.isBlank()) return
         viewModelScope.launch {
-            repository.createTask(
-                Task(title = title.trim(), description = description.trim(), quadrant = quadrant)
-            )
+            repository.createTask(Task(title = title.trim(), description = description.trim(), quadrant = quadrant, dueDate = dueDate))
         }
         dismissAddDialog()
     }
 
-    // ========================
     // Редактирование
-    // ========================
-
-    fun showEditDialog(task: Task) {
-        _uiState.update { it.copy(taskToEdit = task) }
-    }
-
-    fun dismissEditDialog() {
-        _uiState.update { it.copy(taskToEdit = null) }
-    }
-
-    fun updateTask(task: Task, newTitle: String, newDescription: String) {
+    fun showEditDialog(task: Task) = _uiState.update { it.copy(taskToEdit = task) }
+    fun dismissEditDialog() = _uiState.update { it.copy(taskToEdit = null) }
+    fun updateTask(task: Task, newTitle: String, newDescription: String, newDueDate: Long?) {
         viewModelScope.launch {
-            repository.updateTask(
-                task.copy(title = newTitle.trim(), description = newDescription.trim())
-            )
+            repository.updateTask(task.copy(title = newTitle.trim(), description = newDescription.trim(), dueDate = newDueDate))
         }
         dismissEditDialog()
     }
 
-    // ========================
     // Удаление
-    // ========================
-
-    fun requestDelete(task: Task) {
-        _uiState.update { it.copy(taskToDelete = task) }
-    }
-
+    fun requestDelete(task: Task) = _uiState.update { it.copy(taskToDelete = task) }
     fun confirmDelete() {
         val task = _uiState.value.taskToDelete ?: return
         viewModelScope.launch { repository.deleteTask(task) }
         _uiState.update { it.copy(taskToDelete = null) }
     }
+    fun cancelDelete() = _uiState.update { it.copy(taskToDelete = null) }
 
-    fun cancelDelete() {
-        _uiState.update { it.copy(taskToDelete = null) }
-    }
-
-    // ========================
-    // Туториал и тема
-    // ========================
-
-    fun dismissTutorial() {
-        viewModelScope.launch { preferencesManager.setTutorialShown() }
-    }
-
-    fun setTheme(theme: ThemePreference) {
-        viewModelScope.launch { preferencesManager.setThemePreference(theme) }
-    }
+    // Настройки
+    fun dismissTutorial() = viewModelScope.launch { preferencesManager.setTutorialShown() }
+    fun setTheme(theme: ThemePreference) = viewModelScope.launch { preferencesManager.setThemePreference(theme) }
 }
