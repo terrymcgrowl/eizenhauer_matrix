@@ -2,6 +2,7 @@ package com.eisenhower.matrix.ui.components
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
@@ -238,7 +239,7 @@ fun DeleteConfirmDialog(task: Task, onConfirm: () -> Unit, onDismiss: () -> Unit
 
 @Composable
 fun TutorialOverlay(onDismiss: () -> Unit) {
-    androidx.compose.foundation.layout.Box(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.6f)),
