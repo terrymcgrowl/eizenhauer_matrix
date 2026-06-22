@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Передний план иконки — матрица 2x2 с цветными точками -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Q1: верх-лево — красный (срочно + важно) -->
+    <path
+        android:pathData="M18,18 L46,18 Q50,18 50,22 L50,50 Q50,54 46,54 L18,54 Q14,54 14,50 L14,22 Q14,18 18,18 Z"
+        android:fillColor="#2A2A2A"/>
+    <path
+        android:pathData="M32,32 m-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0"
+        android:fillColor="#D94F4F"/>
+
+    <!-- Q2: верх-право — синий (важно + не срочно) -->
+    <path
+        android:pathData="M62,18 L90,18 Q94,18 94,22 L94,50 Q94,54 90,54 L62,54 Q58,54 58,50 L58,22 Q58,18 62,18 Z"
+        android:fillColor="#2A2A2A"/>
+    <path
+        android:pathData="M76,32 m-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0"
+        android:fillColor="#4A7CC7"/>
+
+    <!-- Q3: низ-лево — янтарный (срочно + не важно) -->
+    <path
+        android:pathData="M18,58 L46,58 Q50,58 50,62 L50,90 Q50,94 46,94 L18,94 Q14,94 14,90 L14,62 Q14,58 18,58 Z"
+        android:fillColor="#2A2A2A"/>
+    <path
+        android:pathData="M32,76 m-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0"
+        android:fillColor="#D4832A"/>
+
+    <!-- Q4: низ-право — серый (не срочно + не важно) -->
+    <path
+        android:pathData="M62,58 L90,58 Q94,58 94,62 L94,90 Q94,94 90,94 L62,94 Q58,94 58,90 L58,62 Q58,58 62,58 Z"
+        android:fillColor="#2A2A2A"/>
+    <path
+        android:pathData="M76,76 m-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0"
+        android:fillColor="#8A8A8A"/>
+
+</vector>
